@@ -49,7 +49,7 @@ const Filter = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+    <div className="bg-white p-6 rounded-lg shadow-md mb-8 sticky top-24 overflow-y-auto max-h-[calc(100vh-6rem)]">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Filters</h2>
         <button

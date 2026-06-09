@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../core/JWT.php';
 require_once __DIR__ . '/../models/User.php';
 
 /**
@@ -12,7 +13,9 @@ class AuthController extends Controller
     public function __construct()
     {
         $this->userModel = new User();
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     }
 
     /**
@@ -65,8 +68,17 @@ class AuthController extends Controller
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_email'] = $user['email'];
 
+                // Generate JWT token
+                $token = JWT::encode([
+                    'user_id' => $user['id'],
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'role' => $user['role'] ?? 'user'
+                ], JWT_SECRET);
+
                 $this->success([
                     'user' => $user,
+                    'token' => $token,
                     'session_id' => session_id()
                 ], 'Registration successful', 201);
             } else {
@@ -109,11 +121,21 @@ class AuthController extends Controller
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_role'] = $user['role']; 
 
             $userData = $this->userModel->findSafe($user['id']);
 
+            // Generate JWT token
+            $token = JWT::encode([
+                'user_id' => $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'role' => $user['role']
+            ], JWT_SECRET);
+
             $this->success([
                 'user' => $userData,
+                'token' => $token,
                 'session_id' => session_id()
             ], 'Login successful');
         } catch (Exception $e) {
@@ -142,32 +164,24 @@ class AuthController extends Controller
     public function me()
     {
         try {
-            if (!isset($_SESSION['user_id'])) {
-                $this->error('Not authenticated', 401);
-                return;
-            }
+            // Use JWT token for authentication (session won't work cross-domain)
+            $userId = $this->requireAuth();
 
-            $user = $this->userModel->findSafe($_SESSION['user_id']);
+            $user = $this->userModel->findSafe($userId);
             if (!$user) {
                 $this->error('User not found', 404);
                 return;
             }
 
-            $this->success($user, 'User retrieved successfully');
+            $this->success([
+                'id' => $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'role' => $user['role'] ?? $_SESSION['user_role'] ?? 'user'
+            ], 'User retrieved successfully');
+
         } catch (Exception $e) {
             $this->error('Failed to retrieve user: ' . $e->getMessage(), 500);
         }
-    }
-
-    /**
-     * Check authentication
-     */
-    protected function requireAuth()
-    {
-        if (!isset($_SESSION['user_id'])) {
-            $this->error('Authentication required', 401);
-            exit();
-        }
-        return $_SESSION['user_id'];
     }
 }

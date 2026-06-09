@@ -13,9 +13,11 @@ class Cart extends Model
      */
     public function getUserCart($userId)
     {
-        $query = "SELECT ci.*, p.name, p.price, p.image, p.discount_price 
+        $query = "SELECT ci.*, p.name, p.price, p.image, p.discount_price,
+                         pv.size, pv.color, pv.stock as variant_stock
                   FROM {$this->table} ci
                   INNER JOIN products p ON ci.product_id = p.id
+                  LEFT JOIN product_variants pv ON ci.variant_id = pv.id
                   WHERE ci.user_id = :user_id
                   ORDER BY ci.created_at DESC";
         
@@ -23,32 +25,41 @@ class Cart extends Model
         $stmt->bindParam(':user_id', $userId);
         $stmt->execute();
         
-        return $stmt->fetchAll();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
-     * Get cart item by user and product
+     * Get cart item by user, product, and variant
      */
-    public function getCartItem($userId, $productId)
+    public function getCartItem($userId, $productId, $variantId = null)
     {
         $query = "SELECT * FROM {$this->table} 
-                  WHERE user_id = :user_id AND product_id = :product_id 
-                  LIMIT 1";
+                  WHERE user_id = :user_id AND product_id = :product_id ";
+        
+        if ($variantId !== null) {
+            $query .= "AND variant_id = :variant_id ";
+        } else {
+            $query .= "AND variant_id IS NULL ";
+        }
+        $query .= "LIMIT 1";
         
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':user_id', $userId);
         $stmt->bindParam(':product_id', $productId);
+        if ($variantId !== null) {
+            $stmt->bindParam(':variant_id', $variantId);
+        }
         $stmt->execute();
         
-        return $stmt->fetch();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
      * Add item to cart
      */
-    public function addItem($userId, $productId, $quantity = 1)
+    public function addItem($userId, $productId, $quantity = 1, $variantId = null)
     {
-        $existingItem = $this->getCartItem($userId, $productId);
+        $existingItem = $this->getCartItem($userId, $productId, $variantId);
 
         if ($existingItem) {
             // Update quantity
@@ -62,6 +73,7 @@ class Cart extends Model
             return $this->create([
                 'user_id' => $userId,
                 'product_id' => $productId,
+                'variant_id' => $variantId,
                 'quantity' => $quantity,
                 'created_at' => date('Y-m-d H:i:s')
             ]);
@@ -84,11 +96,11 @@ class Cart extends Model
     }
 
     /**
-     * Remove item from cart
+     * Remove item from cart by cart_item_id or (product_id + variant)
      */
-    public function removeItem($userId, $productId)
+    public function removeItem($userId, $productId, $variantId = null)
     {
-        $item = $this->getCartItem($userId, $productId);
+        $item = $this->getCartItem($userId, $productId, $variantId);
         if ($item) {
             return $this->delete($item['id']);
         }

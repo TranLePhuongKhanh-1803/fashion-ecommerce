@@ -55,8 +55,9 @@ class CartController extends Controller
             $userId = $_SESSION['user_id'];
             $productId = $data['product_id'];
             $quantity = $data['quantity'] ?? 1;
+            $variantId = isset($data['variant_id']) ? $data['variant_id'] : null;
 
-            $result = $this->cartModel->addItem($userId, $productId, $quantity);
+            $result = $this->cartModel->addItem($userId, $productId, $quantity, $variantId);
 
             if ($result) {
                 $items = $this->cartModel->getUserCart($userId);
@@ -155,22 +156,6 @@ class CartController extends Controller
             }
         } catch (Exception $e) {
             $this->error('Failed to clear cart: ' . $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Check authentication
-     */
-    private function requireAuth()
-    {
-        if (!isset($_SESSION['user_id'])) {
-            http_response_code(401);
-            header('Content-Type: application/json');
-            echo json_encode([
-                'success' => false,
-                'message' => 'Authentication required'
-            ]);
-            exit();
         }
     }
 }

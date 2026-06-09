@@ -73,4 +73,65 @@ class Controller
 
         return $errors;
     }
+
+    /**
+     * Check authentication
+     */
+    protected function requireAuth()
+    {
+        // Try JWT first (from Authorization: Bearer <token>)
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            require_once __DIR__ . '/JWT.php';
+            $payload = JWT::decode($matches[1], JWT_SECRET);
+            if ($payload && isset($payload['user_id'])) {
+                // Also populate session for compatibility with existing code
+                $_SESSION['user_id'] = $payload['user_id'];
+                $_SESSION['user_role'] = $payload['role'] ?? 'user';
+                return $payload['user_id'];
+            }
+            $this->error('Invalid or expired token', 401);
+            exit();
+        }
+
+        // Fallback to session
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user_id'])) {
+            $this->error('Authentication required', 401);
+            exit();
+        }
+        return $_SESSION['user_id'];
+    }
+
+    /**
+     * Check admin permission
+     */
+    protected function requireAdmin()
+    {
+        $this->requireAuth();
+
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+            $this->error('Admin permission required', 403);
+            exit();
+        }
+        return $_SESSION['user_id'];
+    }
+
+    /**
+     * Check staff permission (allows both admin and staff)
+     */
+    protected function requireStaff()
+    {
+        $this->requireAuth();
+
+        $role = $_SESSION['user_role'] ?? '';
+        if ($role !== 'admin' && $role !== 'staff') {
+            $this->error('Staff permission required', 403);
+            exit();
+        }
+        return $_SESSION['user_id'];
+    }
 }

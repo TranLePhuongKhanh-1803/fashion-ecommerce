@@ -23,24 +23,30 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      setLoading(true);
-      const data = await authAPI.getMe();
-      setUser(data.data);
-    } catch (error) {
-      // Not logged in or error - set user to null
-      setUser(null);
-      console.error('Auth check failed:', error.message || 'Not authenticated');
-    } finally {
-      setLoading(false);
-    }
-  };
+const checkAuth = async () => {
+  try {
+    setLoading(true);
+    const data = await authAPI.getMe();
+
+    console.log('AUTH USER:', data.data); 
+
+    setUser(data.data);
+  } catch (error) {
+    setUser(null);
+    console.error('Auth check failed:', error.message || 'Not authenticated');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const login = async (email, password) => {
     try {
       const data = await authAPI.login({ email, password });
       setUser(data.data.user);
+      // Save JWT token
+      if (data.data.token) {
+        localStorage.setItem('auth_token', data.data.token);
+      }
       return { success: true, message: data.message };
     } catch (error) {
       return { success: false, message: error.message || 'Login failed' };
@@ -51,6 +57,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await authAPI.register({ name, email, password });
       setUser(data.data.user);
+      // Save JWT token
+      if (data.data.token) {
+        localStorage.setItem('auth_token', data.data.token);
+      }
       return { success: true, message: data.message };
     } catch (error) {
       return { success: false, message: error.message || 'Registration failed' };
@@ -61,9 +71,11 @@ export const AuthProvider = ({ children }) => {
     try {
       await authAPI.logout();
       setUser(null);
+      localStorage.removeItem('auth_token');
       return { success: true };
     } catch (error) {
       setUser(null);
+      localStorage.removeItem('auth_token');
       return { success: true }; // Logout locally even if API fails
     }
   };
@@ -75,6 +87,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     isAuthenticated: !!user,
+    isAdmin: user?.role === 'admin',
+    isStaff: user?.role === 'staff',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,0 +1,1 @@
+export const BACKEND_URL = 'https://pkfashion.site.je/backend/public';

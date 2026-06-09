@@ -14,6 +14,14 @@ class Model
     }
 
     /**
+     * Set database connection (to share connection within a transaction)
+     */
+    public function setDb($db)
+    {
+        $this->db = $db;
+    }
+
+    /**
      * Get all records
      */
     public function all($orderBy = 'id DESC')

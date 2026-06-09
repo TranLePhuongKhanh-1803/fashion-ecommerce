@@ -67,7 +67,7 @@ fashion-ecommerce/
    **Cách 1: Sử dụng PHP built-in server (khuyến nghị để test)**
    ```bash
    cd backend/public
-   php -S localhost:8000
+    
    ```
    
    **Cách 2: Sử dụng Apache/XAMPP**

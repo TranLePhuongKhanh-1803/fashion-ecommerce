@@ -42,10 +42,10 @@ export const CartProvider = ({ children }) => {
   };
 
   // Add item to cart
-  const addToCart = async (productId, quantity = 1) => {
+  const addToCart = async (productId, quantity = 1, variantId = null) => {
     try {
       setLoading(true);
-      const data = await cartAPI.addItem({ product_id: productId, quantity });
+      const data = await cartAPI.addItem({ product_id: productId, quantity, variant_id: variantId });
       setCart({
         items: data.data.items || [],
         total: data.data.total || 0,
@@ -78,10 +78,10 @@ export const CartProvider = ({ children }) => {
   };
 
   // Remove item from cart
-  const removeFromCart = async (productId) => {
+  const removeFromCart = async (productId, variantId = null) => {
     try {
       setLoading(true);
-      const data = await cartAPI.removeItem(productId);
+      const data = await cartAPI.removeItem(productId, variantId);
       setCart({
         items: data.data.items || [],
         total: data.data.total || 0,

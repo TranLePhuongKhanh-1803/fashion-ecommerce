@@ -30,7 +30,8 @@ class ProductController extends Controller
                 'size' => $_GET['size'] ?? '',
                 'color' => $_GET['color'] ?? '',
                 'sort' => $_GET['sort'] ?? 'id DESC',
-                'limit' => $_GET['limit'] ?? ''
+                'limit' => $_GET['limit'] ?? '',
+                'page' => $_GET['page'] ?? ''
             ];
 
             // Remove empty filters
@@ -58,6 +59,10 @@ class ProductController extends Controller
                 $this->error('Product not found', 404);
                 return;
             }
+
+            // Get variants
+            $variants = $this->productModel->getVariants($id);
+            $product['variants'] = $variants;
 
             // Get related products
             $relatedProducts = $this->productModel->getRelated(
@@ -108,7 +113,7 @@ class ProductController extends Controller
      * POST /api/products
      */
     public function create()
-    {
+    {$this->requireAdmin();
         try {
             $data = $this->getRequestBody();
             
@@ -129,6 +134,62 @@ class ProductController extends Controller
             }
         } catch (Exception $e) {
             $this->error('Failed to create product: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Update product
+     * PUT /api/products/{id}
+     */
+    public function update($id)
+    {
+        $this->requireAdmin();
+        try {
+            $data = $this->getRequestBody();
+            
+            $errors = $this->validate($data, ['name', 'price', 'category']);
+            if (!empty($errors)) {
+                $this->error('Validation failed', 400, $errors);
+                return;
+            }
+
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            $result = $this->productModel->update($id, $data);
+
+            if ($result) {
+                $product = $this->productModel->find($id);
+                $this->success($product, 'Product updated successfully');
+            } else {
+                $this->error('Failed to update product', 500);
+            }
+        } catch (Exception $e) {
+            $this->error('Failed to update product: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Delete product
+     * DELETE /api/products/{id}
+     */
+    public function delete($id)
+    {
+        $this->requireAdmin();
+        try {
+            $product = $this->productModel->find($id);
+            if (!$product) {
+                $this->error('Product not found', 404);
+                return;
+            }
+
+            $result = $this->productModel->delete($id);
+
+            if ($result) {
+                $this->success(null, 'Product deleted successfully');
+            } else {
+                $this->error('Failed to delete product', 500);
+            }
+        } catch (Exception $e) {
+            $this->error('Failed to delete product: ' . $e->getMessage(), 500);
         }
     }
 }

@@ -8,9 +8,4 @@ RewriteRule ^(.*)$ index.php [QSA,L]
 # Set default charset
 AddDefaultCharset UTF-8
 
-# Enable CORS
-<IfModule mod_headers.c>
-    Header set Access-Control-Allow-Origin "*"
-    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    Header set Access-Control-Allow-Headers "Content-Type, Authorization"
-</IfModule>
+# CORS is handled in config.php — DO NOT set here to avoid double headers

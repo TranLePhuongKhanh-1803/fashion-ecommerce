@@ -10,8 +10,9 @@ import Loader from '../components/Loader';
 
 const Shop = () => {
   const [products, setProducts] = useState([]);
+  const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -28,6 +29,7 @@ const Shop = () => {
           color: searchParams.get('color') || '',
           search: searchParams.get('search') || '',
           sort: searchParams.get('sort') || 'id DESC',
+          page: searchParams.get('page') || 1,
         };
 
         // Remove empty params
@@ -36,13 +38,25 @@ const Shop = () => {
         });
 
         const data = await productAPI.getAll(params);
-        setProducts(data?.data || data || []);
+        
+        if (data?.data && !Array.isArray(data.data) && data.data.data) {
+          // Pagination mode
+          setProducts(data.data.data);
+          setPagination({
+            current_page: data.data.current_page,
+            last_page: data.data.last_page,
+            total: data.data.total
+          });
+        } else {
+          // Fallback
+          setProducts(data?.data || data || []);
+          setPagination(null);
+        }
       } catch (error) {
         console.error('Failed to load products:', error);
         setProducts([]);
-        // Show error message if it's a network error
         if (error.message && error.message.includes('Không thể kết nối')) {
-          console.error('Backend server không chạy. Vui lòng chạy: cd backend/public && php -S localhost:8000');
+          console.error('Backend server không chạy.');
         }
       } finally {
         setLoading(false);
@@ -59,7 +73,16 @@ const Shop = () => {
     searchParams.get('color'),
     searchParams.get('search'),
     searchParams.get('sort'),
+    searchParams.get('page'),
   ]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || (pagination && newPage > pagination.last_page)) return;
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', newPage);
+    setSearchParams(newParams);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -67,7 +90,7 @@ const Shop = () => {
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Shop</h1>
         <p className="text-gray-600">
-          {products.length} {products.length === 1 ? 'product' : 'products'} found
+          {pagination ? pagination.total : products.length} {((pagination ? pagination.total : products.length) === 1) ? 'product' : 'products'} found
         </p>
       </div>
 
@@ -82,11 +105,50 @@ const Shop = () => {
           {loading ? (
             <Loader />
           ) : products.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+              
+              {/* Pagination Controls */}
+              {pagination && pagination.last_page > 1 && (
+                <div className="flex justify-center items-center mt-12 gap-2">
+                  <button 
+                    onClick={() => handlePageChange(pagination.current_page - 1)}
+                    disabled={pagination.current_page <= 1}
+                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="flex items-center gap-1 mx-2">
+                    {[...Array(pagination.last_page)].map((_, i) => (
+                      <button
+                        key={i + 1}
+                        onClick={() => handlePageChange(i + 1)}
+                        className={`w-10 h-10 rounded-md font-medium transition-colors ${
+                          pagination.current_page === i + 1
+                            ? 'bg-primary-black text-white'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button 
+                    onClick={() => handlePageChange(pagination.current_page + 1)}
+                    disabled={pagination.current_page >= pagination.last_page}
+                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-16">
               <p className="text-xl text-gray-500 mb-2">No products found</p>
